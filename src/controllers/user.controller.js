@@ -1,7 +1,8 @@
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiRequestHandler.js";
-import { User } from "../models/user.model.js"
-import { AsyncHandler } from "../utils/AsyncHandler.js"
+import { User } from "../models/user.model.js";
+import { AsyncHandler } from "../utils/AsyncHandler.js";
+import jwt from "jsonwebtoken";
 
 const getAccessAndRefreshToken = async(userId) => {
     try {
@@ -72,9 +73,9 @@ const loginUser = AsyncHandler(async(req, res) => {
 
     const {userName, email, password} = req.body;
 
-    if(!(userName || email)){
-        throw new ApiError(401, "Please enter a valid username or email")
-    }
+    // if(!(userName || email)){
+    //     throw new ApiError(401, "Please enter a valid username or email")
+    // }
 
     const user = await User.findOne({
         $or: [{ userName }, { email }]
@@ -140,8 +141,70 @@ const logoutUser = AsyncHandler(async(req, res) => {
         new ApiResponse(200, {}, "user logout successfully")
     )
 });
+
+const changePassword = AsyncHandler(async(req, res) => {
+    const {oldPassword, newPassword} = req.body
+
+    const user = await User.findById(req.user?._id)
+
+    const isPasswordCorrect = await user.isPasswordCheck(oldPassword)
+    if(!isPasswordCorrect){
+        throw new ApiError(400, "Invalid old password")
+    }
+
+    user.password = newPassword
+    await user.save({validateBeforeSave: false})
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, {}, "successfully changed password")
+    )
+});
+
+const refreshTokenAccess = AsyncHandler(async(req, res) => {
+    // get refreshToken 
+    const incomingToken = req.cookies.refreshToken || req.body.refreshToken
+    if(!incomingToken){
+        throw new ApiError(400, "Invalid refresh token")
+    }
+    const decodedToken = jwt.verify(incomingToken, process.env.REFRESH_TOKEN_SECRET)
+
+    try {
+        const user = await User.findById(decodedToken?._id)
+        if(!user){
+            throw new ApiError(401, "unauthorize access refresh token")
+        }
+    
+        if(incomingToken !== user?.refreshToken){
+            throw new ApiError(400, "Invalid access for refresh token")
+        }
+    
+        const {accessToken, newRefreshToken} = await getAccessAndRefreshToken(user._id)
+    
+        const options = {
+            httpOnly: true,
+            secure: true
+        }
+    
+        return res
+        .status(200)
+        .cookie("accessToken", accessToken, options)
+        .cookie("refreshToken", newRefreshToken, options)
+        .json(
+            new ApiResponse(
+                200,
+                {accessToken, refreshToken: newRefreshToken},
+                "successfully refreshed a refresh token"
+            )
+        )
+    } catch (error) {
+        throw new ApiError(500, error?.message || "Something Went Wrong While Refreshed a RefreshToken")
+    }
+});
 export { 
     registerUser,
     loginUser,
-    logoutUser
+    logoutUser,
+    changePassword,
+    refreshTokenAccess
 }
