@@ -2,6 +2,7 @@ import { Router } from "express";
 import { changePassword, loginUser, logoutUser, refreshTokenAccess, registerUser } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js"
 import { validJWT } from "../middlewares/auth.middleware.js";
+import { createTask } from "../controllers/task.controller.js";
 const router = Router()
 
 router.route("/register").post(
@@ -18,6 +19,14 @@ router.route("/logout").post(
 
 router.route("/refresh-token").post(refreshTokenAccess)
 
-router.route("/change-password").post(changePassword)
+router.route("/change-password").post(
+    validJWT, 
+    changePassword
+)
+
+router.route("/create-task").post(
+    validJWT,
+    createTask
+)
 
 export default router 
