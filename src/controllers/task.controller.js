@@ -49,6 +49,22 @@ console.log(task)
     )
 });
 
+const getTask = AsyncHandler(async(req, res) => {
+    const userId = await req.user?._id
+    if(!userId){
+        throw new ApiError(400, "unauthorize user")
+    }
+
+    const task = await Task.find({userId})
+
+    return res
+    .status(201)
+    .json(new ApiResponse(200, task, "get all task by user"))
+
+});
+
+
 export {
-    createTask
+    createTask,
+    getTask
 }
