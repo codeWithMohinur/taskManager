@@ -115,10 +115,38 @@ const updateTask = AsyncHandler(async(req, res) => {
 
 });
 
+const deleteTask = AsyncHandler(async(req, res) => {
+    const {taskId}  = req.params
+    console.log(taskId)
+    const userId = req.user?._id
+    console.log(userId)
+    if(!taskId){
+        throw new ApiError(400, "enter a valid task id")
+    }
+
+    if(!userId){
+        throw new ApiError(401, "unauthorize access")
+    }
+
+    const task = await Task.findByIdAndDelete(
+        {
+            _id: taskId,
+            user: userId
+        }
+    );
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, {}, "Deleted task successfully")
+    )
+});
+
 
 
 export {
     createTask,
     getTask,
-    updateTask
+    updateTask,
+    deleteTask
 }
