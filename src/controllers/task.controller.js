@@ -64,7 +64,61 @@ const getTask = AsyncHandler(async(req, res) => {
 });
 
 
+const updateTask = AsyncHandler(async(req, res) => {
+    const { taskId } = req.params
+
+    const { title, description, status, priority} = req.body
+
+    const userId = req.user?._id
+    if(!userId){
+        throw new ApiError(401, "unauthorize user")
+    }
+
+    const validateInfo = [title, description, status, priority]
+    if(
+        validateInfo.some((field) => typeof field !== "string" || field.trim() === "")
+    ){
+        throw new ApiError(400, "All fields are must be required")
+    }
+
+    const task = await Task.findByIdAndUpdate(
+        {
+            _id: taskId,
+            userId: userId
+        },
+        {
+            $set: {
+                title: title.trim(),
+                description: description.trim(),
+                status: status.trim(),
+                priority: priority.trim()
+            },
+        },
+        {
+            new: true
+        }
+    )
+
+    if(!task){
+        throw new ApiError(400, "Task not found or you are not authorized to update it")
+    }
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            { task },
+            "Update task successfully"
+        )
+    );
+
+});
+
+
+
 export {
     createTask,
-    getTask
+    getTask,
+    updateTask
 }
